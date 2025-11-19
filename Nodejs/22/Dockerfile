@@ -9,7 +9,7 @@ LABEL       org.opencontainers.image.licenses=MIT
 
 RUN         apt update \
             && apt -y upgrade \
-            && apt -y install wget ffmpeg iproute2 git sqlite3 libsqlite3-dev python3 python3-dev ca-certificates dnsutils tzdata zip tar curl build-essential libtool iputils-ping libnss3 tini libdbus-1-3 \
+            && apt -y install wget ffmpeg iproute2 git sqlite3 libsqlite3-dev python3 python3-dev ca-certificates dnsutils tzdata zip tar curl build-essential libtool iputils-ping libnss3 tini libdbus-1-3 pkg-config libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev\
             && useradd -m -d /home/container container
 
 RUN         npm config set registry https://registry.npmjs.org/ --global
