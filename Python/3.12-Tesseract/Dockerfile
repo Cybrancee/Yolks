@@ -1,4 +1,4 @@
-FROM        --platform=$TARGETOS/$TARGETARCH python:3.11-slim-bookworm
+FROM        --platform=$TARGETOS/$TARGETARCH python:3.12-slim-bookworm
 
 ARG CHROME_VERSION="143.0.7499.40"
 
@@ -9,13 +9,15 @@ LABEL       org.opencontainers.image.licenses=MIT
 RUN apt update -y \
     && apt -y upgrade \
     && apt-get -y install sudo \
-    && apt -y install wget curl git gcc g++ ca-certificates dnsutils curl iproute2 ffmpeg procps tini libmariadb3 libmariadb-dev libnss3 libnss3-dev libnss3-tools libgdk-pixbuf2.0-dev libgtk-3-dev libxss-dev graphviz\
+    && apt -y install wget curl git gcc g++ ca-certificates dnsutils curl iproute2 ffmpeg procps tini libmariadb3 libmariadb-dev libnss3 libnss3-dev libnss3-tools libgdk-pixbuf2.0-dev libgtk-3-dev libxss-dev \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -d /home/container container 
 
 RUN apt update -y \
     && sudo apt install -y libnss3 \
     && apt search libnss3
+
+RUN apt install tesseract-ocr
 
 RUN python -m pip install --upgrade pip
 

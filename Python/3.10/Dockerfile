@@ -1,6 +1,6 @@
 FROM        --platform=$TARGETOS/$TARGETARCH python:3.10-slim-bookworm
 
-ARG CHROME_VERSION="130.0.6723.116"
+ARG CHROME_VERSION="143.0.7499.40"
 
 LABEL       author="Michael Parker" maintainer="support@cybrancee.com"
 LABEL       org.opencontainers.image.source="https://github.com/Cybrancee/Yolks"
@@ -9,7 +9,7 @@ LABEL       org.opencontainers.image.licenses=MIT
 RUN apt update -y \
     && apt -y upgrade \
     && apt-get -y install sudo \
-    && apt -y install wget curl git gcc g++ ca-certificates dnsutils curl iproute2 ffmpeg procps tini libmariadb3 libmariadb-dev libnss3 libnss3-dev libnss3-tools libgdk-pixbuf2.0-dev libgtk-3-dev libxss-dev \
+    && apt -y install wget curl git gcc g++ ca-certificates dnsutils curl iproute2 ffmpeg procps tini libmariadb3 libmariadb-dev libnss3 libnss3-dev libnss3-tools libgdk-pixbuf2.0-dev libgtk-3-dev libxss-dev graphviz\
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -d /home/container container 
 
