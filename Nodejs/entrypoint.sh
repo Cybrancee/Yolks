@@ -8,6 +8,9 @@ export INTERNAL_IP
 # Print Node.js Version
 node -v
 
+# Print npm Version
+npm -v
+
 # Replace Startup Variables
 MODIFIED_STARTUP=$(echo -e ${STARTUP} | sed -e 's/{{/${/g' -e 's/}}/}/g')
 echo ":/home/container$ ${MODIFIED_STARTUP}"
