@@ -9,9 +9,6 @@
 #   SERVER_PORT + 1  = X+1  → game port secundario (manejado internamente por el binario)
 #   SERVER_PORT + 2  = X+2  → query port (Steam browser)
 #   SERVER_PORT + 3  = X+3  → beacon port
-#
-# Server.cfg es gestionado por el parser de Pterodactyl.
-# NO se parchea aquí.
 # -------------------------------------------------------
 
 export QUERY_PORT=$((SERVER_PORT + 2))
@@ -23,6 +20,9 @@ echo "--------------------------------------------"
 echo " Game Port   : ${SERVER_PORT} (+ $((SERVER_PORT + 1)) internal)"
 echo " Query Port  : ${QUERY_PORT}"
 echo " Beacon Port : ${BEACON_PORT}"
+if [[ -n "${EXTRA_FLAGS}" ]]; then
+    echo " Extra Flags : ${EXTRA_FLAGS}"
+fi
 echo "--------------------------------------------"
 
 # ---- Auto-update (controlled by AUTO_UPDATE variable) ----
@@ -80,4 +80,5 @@ exec "${BINARY}" SquadGame \
     Port=${SERVER_PORT} \
     QueryPort=${QUERY_PORT} \
     -beaconport=${BEACON_PORT} \
-    -log
+    -log \
+    ${EXTRA_FLAGS}
