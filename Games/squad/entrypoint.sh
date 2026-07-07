@@ -2,16 +2,12 @@
 
 # -------------------------------------------------------
 # Squad Dedicated Server - Entrypoint
-# Image: registry.molret.dev/cybrancee/squad:latest
 #
 # Port derivation (multi-tenant, from primary allocation):
 #   SERVER_PORT      = X    → game port principal
 #   SERVER_PORT + 1  = X+1  → game port secundario (manejado internamente por el binario)
 #   SERVER_PORT + 2  = X+2  → query port (Steam browser)
 #   SERVER_PORT + 3  = X+3  → beacon port
-#
-# Server.cfg es gestionado por el parser de Pterodactyl.
-# NO se parchea aquí.
 # -------------------------------------------------------
 
 export QUERY_PORT=$((SERVER_PORT + 2))
@@ -74,10 +70,9 @@ if [[ ! -f "${BINARY}" ]]; then
     exit 1
 fi
 
-# ---- Launch ----
-echo "[Squad] Starting server..."
-exec "${BINARY}" SquadGame \
-    Port=${SERVER_PORT} \
-    QueryPort=${QUERY_PORT} \
-    -beaconport=${BEACON_PORT} \
-    -log
+# ---- Replace Startup Variables ----
+MODIFIED_STARTUP=$(echo ${STARTUP} | sed -e 's/{{/${/g' -e 's/}}/}/g')
+echo -e ":/home/container$ ${MODIFIED_STARTUP}"
+
+# ---- Run the Server ----
+eval ${MODIFIED_STARTUP}
