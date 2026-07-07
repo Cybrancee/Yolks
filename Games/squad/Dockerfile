@@ -28,7 +28,7 @@ WORKDIR     /home/container
 # LD_LIBRARY_PATH needed for Squad Linux binaries
 ENV         LD_LIBRARY_PATH=/home/container/linux64/
 
-COPY        --chown=container:container entrypoint.sh /entrypoint.sh
+COPY        --chown=container:container ./entrypoint.sh /entrypoint.sh
 RUN         chmod +x /entrypoint.sh
 
 STOPSIGNAL  SIGINT
