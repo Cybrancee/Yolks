@@ -37,7 +37,8 @@ RUN         dpkg --add-architecture i386 \
                 xvfb \
                 tini \
                 libc6 \
-                libv8-dev
+                libv8-dev \
+                libsqlite3-0
 
 # Install rcon
 RUN         cd /tmp/ \
