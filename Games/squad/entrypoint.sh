@@ -2,7 +2,6 @@
 
 # -------------------------------------------------------
 # Squad Dedicated Server - Entrypoint
-# Image: registry.molret.dev/cybrancee/squad:latest
 #
 # Port derivation (multi-tenant, from primary allocation):
 #   SERVER_PORT      = X    → game port principal
@@ -20,9 +19,6 @@ echo "--------------------------------------------"
 echo " Game Port   : ${SERVER_PORT} (+ $((SERVER_PORT + 1)) internal)"
 echo " Query Port  : ${QUERY_PORT}"
 echo " Beacon Port : ${BEACON_PORT}"
-if [[ -n "${EXTRA_FLAGS}" ]]; then
-    echo " Extra Flags : ${EXTRA_FLAGS}"
-fi
 echo "--------------------------------------------"
 
 # ---- Auto-update (controlled by AUTO_UPDATE variable) ----
@@ -74,11 +70,9 @@ if [[ ! -f "${BINARY}" ]]; then
     exit 1
 fi
 
-# ---- Launch ----
-echo "[Squad] Starting server..."
-exec "${BINARY}" SquadGame \
-    Port=${SERVER_PORT} \
-    QueryPort=${QUERY_PORT} \
-    -beaconport=${BEACON_PORT} \
-    -log \
-    ${EXTRA_FLAGS}
+# ---- Replace Startup Variables ----
+MODIFIED_STARTUP=$(echo ${STARTUP} | sed -e 's/{{/${/g' -e 's/}}/}/g')
+echo -e ":/home/container$ ${MODIFIED_STARTUP}"
+
+# ---- Run the Server ----
+eval ${MODIFIED_STARTUP}
