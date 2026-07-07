@@ -14,6 +14,7 @@ RUN         apt update -y \
                 git \
                 tar \
                 sqlite3 \
+                libxrender1 \
                 fontconfig \
                 tzdata \
                 iproute2 \
