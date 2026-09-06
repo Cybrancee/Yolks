@@ -44,7 +44,9 @@ ENV LANG=en_US.UTF-8 \
 LABEL org.opencontainers.image.title="Cybrancee - Astroneer" \
       org.opencontainers.image.description="Astroneer Custom Image" \
       org.opencontainers.image.vendor="Cybrancee" \
-      org.opencontainers.image.version="1.4.0"
+      org.opencontainers.image.version="1.5.0"
 
 USER container
 WORKDIR /home/container
+
+CMD ["/usr/local/bin/astroneer"]

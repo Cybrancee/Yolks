@@ -22,27 +22,15 @@ game_pid=''
 monitor_pid=''
 xvfb_pid=''
 shutdown_requested=0
-shutdown_signal=''
 debug_enabled=0
 
-brand() {
-    printf '%b[Cybrancee]%b %s\n' "${PURPLE}" "${RESET}" "$*"
-}
-
-warn() {
-    printf '%b[Cybrancee]%b %b[WARNING]%b %s\n' "${PURPLE}" "${RESET}" "${YELLOW}" "${RESET}" "$*"
-}
-
-fail() {
-    printf '%b[Cybrancee]%b %b[ERROR]%b %s\n' "${PURPLE}" "${RESET}" "${RED}" "${RESET}" "$*" >&2
-}
+brand() { printf '%b[Cybrancee]%b %s\n' "${PURPLE}" "${RESET}" "$*"; }
+warn() { printf '%b[Cybrancee]%b %b[WARNING]%b %s\n' "${PURPLE}" "${RESET}" "${YELLOW}" "${RESET}" "$*"; }
+fail() { printf '%b[Cybrancee]%b %b[ERROR]%b %s\n' "${PURPLE}" "${RESET}" "${RED}" "${RESET}" "$*" >&2; }
 
 setup_required() {
     brand "${SEPARATOR}"
-    while (($#)); do
-        brand "$1"
-        shift
-    done
+    while (($#)); do brand "$1"; shift; done
     brand "${SEPARATOR}"
     exec sleep infinity
 }
@@ -55,8 +43,7 @@ trim() {
 }
 
 require_single_line() {
-    local name="$1"
-    local value="$2"
+    local name="$1" value="$2"
     if [[ "${value}" == *$'\n'* || "${value}" == *$'\r'* ]]; then
         fail "${name} must be a single line."
         exit 64
@@ -64,24 +51,16 @@ require_single_line() {
 }
 
 valid_ipv4() {
-    local ip="$1"
-    local octet
+    local ip="$1" octet
     local -a octets
-
     [[ "${ip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
     IFS='.' read -r -a octets <<< "${ip}"
-    for octet in "${octets[@]}"; do
-        ((10#${octet} >= 0 && 10#${octet} <= 255)) || return 1
-    done
+    for octet in "${octets[@]}"; do ((10#${octet} >= 0 && 10#${octet} <= 255)) || return 1; done
     [[ "${ip}" != '0.0.0.0' && "${ip}" != '255.255.255.255' ]]
 }
 
 require_integer_range() {
-    local name="$1"
-    local value="$2"
-    local minimum="$3"
-    local maximum="$4"
-
+    local name="$1" value="$2" minimum="$3" maximum="$4"
     if [[ ! "${value}" =~ ^[0-9]+$ ]] || ((10#${value} < minimum || 10#${value} > maximum)); then
         fail "${name} must be an integer between ${minimum} and ${maximum}."
         exit 64
@@ -89,356 +68,168 @@ require_integer_range() {
 }
 
 ini_get() {
-    local file="$1"
-    local section="$2"
-    local key="$3"
-
+    local file="$1" section="$2" key="$3"
     [[ -f "${file}" ]] || return 1
     awk -v wanted_section="${section}" -v wanted_key="${key}" '
-        function normalise(value) {
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-            return tolower(value)
-        }
+        function normalise(value) { gsub(/^[[:space:]]+|[[:space:]]+$/, "", value); return tolower(value) }
         /^[[:space:]]*\[[^]]+\][[:space:]]*$/ {
-            current = $0
-            gsub(/^[[:space:]]*\[|\][[:space:]]*$/, "", current)
-            in_section = (normalise(current) == normalise(wanted_section))
-            next
+            current = $0; gsub(/^[[:space:]]*\[|\][[:space:]]*$/, "", current)
+            in_section = (normalise(current) == normalise(wanted_section)); next
         }
         in_section {
-            line = $0
-            sub(/\r$/, "", line)
-            separator = index(line, "=")
-            if (separator == 0) next
+            line = $0; sub(/\r$/, "", line); separator = index(line, "="); if (separator == 0) next
             candidate = substr(line, 1, separator - 1)
             if (normalise(candidate) == normalise(wanted_key)) {
-                value = substr(line, separator + 1)
-                gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-                print value
-                exit
+                value = substr(line, separator + 1); gsub(/^[[:space:]]+|[[:space:]]+$/, "", value); print value; exit
             }
         }
     ' "${file}"
 }
 
 ini_set() {
-    local file="$1"
-    local section="$2"
-    local key="$3"
-    local value="$4"
-    local temporary
-
-    mkdir -p "$(dirname "${file}")"
-    touch "${file}"
-    temporary="$(mktemp "${file}.tmp.XXXXXX")"
-
+    local file="$1" section="$2" key="$3" value="$4" temporary
+    mkdir -p "$(dirname "${file}")"; touch "${file}"; temporary="$(mktemp "${file}.tmp.XXXXXX")"
     awk -v wanted_section="${section}" -v wanted_key="${key}" -v wanted_value="${value}" '
-        function normalise(value) {
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-            return tolower(value)
-        }
-        function write_key() {
-            if (!key_written) {
-                print wanted_key "=" wanted_value
-                key_written = 1
-            }
-        }
+        function normalise(value) { gsub(/^[[:space:]]+|[[:space:]]+$/, "", value); return tolower(value) }
+        function write_key() { if (!key_written) { print wanted_key "=" wanted_value; key_written = 1 } }
         /^[[:space:]]*\[[^]]+\][[:space:]]*$/ {
-            if (in_section) write_key()
-            current = $0
-            gsub(/^[[:space:]]*\[|\][[:space:]]*$/, "", current)
-            in_section = (normalise(current) == normalise(wanted_section))
-            if (in_section) section_seen = 1
-            sub(/\r$/, "", $0)
-            print
-            next
+            if (in_section) write_key(); current = $0; gsub(/^[[:space:]]*\[|\][[:space:]]*$/, "", current)
+            in_section = (normalise(current) == normalise(wanted_section)); if (in_section) section_seen = 1
+            sub(/\r$/, "", $0); print; next
         }
         {
             sub(/\r$/, "", $0)
             if (in_section) {
-                line = $0
-                separator = index(line, "=")
+                line = $0; separator = index(line, "=")
                 if (separator > 0) {
                     candidate = substr(line, 1, separator - 1)
-                    if (normalise(candidate) == normalise(wanted_key)) {
-                        write_key()
-                        next
-                    }
+                    if (normalise(candidate) == normalise(wanted_key)) { write_key(); next }
                 }
             }
             print
         }
         END {
             if (in_section) write_key()
-            if (!section_seen) {
-                if (NR > 0) print ""
-                print "[" wanted_section "]"
-                print wanted_key "=" wanted_value
-            }
+            if (!section_seen) { if (NR > 0) print ""; print "[" wanted_section "]"; print wanted_key "=" wanted_value }
         }
     ' "${file}" > "${temporary}"
-
     chmod --reference="${file}" "${temporary}" 2>/dev/null || chmod 0644 "${temporary}"
     mv -f "${temporary}" "${file}"
 }
 
+update_server() {
+    local steamcmd="${SERVER_DIR}/steamcmd/steamcmd.sh"
+    if [[ "${AUTO_UPDATE:-1}" == '0' ]]; then brand 'Automatic updates are disabled.'; return 0; fi
+    if [[ "${AUTO_UPDATE:-1}" != '1' ]]; then fail 'Automatic Updates must be 0 or 1.'; exit 64; fi
+    if [[ ! -x "${steamcmd}" ]]; then warn 'SteamCMD is missing; skipping the automatic update.'; return 0; fi
+    brand 'Checking for Astroneer updates...'
+    if ! env HOME="${SERVER_DIR}" "${steamcmd}" +force_install_dir "${SERVER_DIR}" +@sSteamCmdForcePlatformType windows +login anonymous +app_update "${APP_ID}" +quit; then
+        warn 'SteamCMD update failed; attempting to start the currently installed server files.'
+    fi
+}
+
+resolve_startup() {
+    local startup_command="${STARTUP:-}"
+    if [[ -z "$(trim "${startup_command}")" ]]; then fail 'No startup command was provided by the egg.'; exit 64; fi
+    startup_command="$(printf '%s' "${startup_command}" | sed -e 's/{{/${/g' -e 's/}}/}/g')"
+    printf '%s' "${startup_command}"
+}
+
 udp_port_is_bound() {
-    ss -H -lun 2>/dev/null | awk -v wanted_port="${SERVER_PORT}" '
-        {
-            endpoint = $4
-            sub(/^.*:/, "", endpoint)
-            if (endpoint == wanted_port) found = 1
-        }
-        END { exit(found ? 0 : 1) }
-    '
+    ss -H -lun 2>/dev/null | awk -v wanted_port="${SERVER_PORT}" '{ endpoint = $4; sub(/^.*:/, "", endpoint); if (endpoint == wanted_port) found = 1 } END { exit(found ? 0 : 1) }'
 }
 
 monitor_readiness() {
-    local elapsed=0
-    local bound_checks=0
-
+    local elapsed=0 bound_checks=0
     while kill -0 "${game_pid}" 2>/dev/null; do
         if udp_port_is_bound; then
-            ((bound_checks += 1))
-            if ((bound_checks >= 3)); then
-                brand "Astroneer server is ready."
-                return 0
-            fi
-        else
-            bound_checks=0
-        fi
-
-        if ((elapsed == 180)); then
-            brand "Astroneer is still initializing. Startup can take a few minutes."
+            ((bound_checks += 1)); if ((bound_checks >= 3)); then brand 'Astroneer server is ready.'; return 0; fi
+        else bound_checks=0; fi
+        if ((elapsed == 180)); then brand 'Astroneer is still initializing. Startup can take a few minutes.'
         elif ((elapsed == 600)); then
             warn "Astroneer has not opened port ${SERVER_PORT} after 10 minutes. Reinstall the server or contact Cybrancee support if this continues."
-            if ((debug_enabled == 1)); then
-                brand "Diagnostics: Astro/Saved/Logs/AstroServer.log, Astro/Saved/Logs/CybranceeRuntime.log and steam-728470.log."
-            fi
+            if ((debug_enabled == 1)); then brand 'Diagnostics: Astro/Saved/Logs/AstroServer.log, Astro/Saved/Logs/CybranceeRuntime.log and steam-728470.log.'; fi
         fi
-        sleep 2
-        ((elapsed += 2))
+        sleep 2; ((elapsed += 2))
     done
 }
 
 filter_runtime_output() {
     local line
-
     while IFS= read -r line || [[ -n "${line}" ]]; do
-        if ((debug_enabled == 1)); then
-            printf '%s\n' "${line}" >> "${RUNTIME_LOG_PATH}"
-        fi
+        if ((debug_enabled == 1)); then printf '%s\n' "${line}" >> "${RUNTIME_LOG_PATH}"; fi
         case "${line}" in
-            'X connection to :99 broken (explicit kill or server shutdown).'|\
-            ProtonFixes*'WARN: Skipping fix execution. We are probably running a unit test.'|\
-            'Proton: Upgrading prefix from '*|\
-            'esync: up and running.'|\
-            'fsync: up and running.')
-                continue
-                ;;
+            'X connection to :99 broken (explicit kill or server shutdown).'|ProtonFixes*'WARN: Skipping fix execution. We are probably running a unit test.'|'Proton: Upgrading prefix from '*|'esync: up and running.'|'fsync: up and running.') continue ;;
         esac
         printf '%s\n' "${line}"
     done
 }
 
-game_group_is_alive() {
-    [[ -n "${game_pid}" ]] && kill -0 -- "-${game_pid}" 2>/dev/null
-}
-
-wait_for_game_group() {
-    local timeout_seconds="$1"
-    local elapsed=0
-
-    while game_group_is_alive; do
-        ((elapsed >= timeout_seconds)) && return 1
-        sleep 1
-        ((elapsed += 1))
-    done
-}
+game_group_is_alive() { [[ -n "${game_pid}" ]] && kill -0 -- "-${game_pid}" 2>/dev/null; }
+wait_for_game_group() { local timeout_seconds="$1" elapsed=0; while game_group_is_alive; do ((elapsed >= timeout_seconds)) && return 1; sleep 1; ((elapsed += 1)); done; }
 
 request_shutdown() {
     local signal="$1"
-
     ((shutdown_requested == 1)) && return 0
-    shutdown_requested=1
-    shutdown_signal="${signal}"
-    trap '' INT TERM
-    brand "Stopping Astroneer safely..."
-
+    shutdown_requested=1; trap '' INT TERM; brand 'Stopping Astroneer safely...'
     [[ -z "${monitor_pid}" ]] || kill "${monitor_pid}" 2>/dev/null || true
-    if game_group_is_alive; then
-        kill -"${signal}" -- "-${game_pid}" 2>/dev/null || kill -"${signal}" "${game_pid}" 2>/dev/null || true
-    fi
+    if game_group_is_alive; then kill -"${signal}" -- "-${game_pid}" 2>/dev/null || kill -"${signal}" "${game_pid}" 2>/dev/null || true; fi
 }
 
 finish_requested_shutdown() {
     if ! wait_for_game_group 24; then
-        warn "Graceful shutdown timed out; terminating the remaining Astroneer processes."
-        kill -TERM -- "-${game_pid}" 2>/dev/null || true
-        if ! wait_for_game_group 4; then
-            warn "Astroneer did not terminate in time; forcing the remaining processes to stop."
-            kill -KILL -- "-${game_pid}" 2>/dev/null || true
-            wait_for_game_group 1 || true
-        fi
+        warn 'Graceful shutdown timed out; terminating the remaining Astroneer processes.'; kill -TERM -- "-${game_pid}" 2>/dev/null || true
+        if ! wait_for_game_group 4; then warn 'Astroneer did not terminate in time; forcing the remaining processes to stop.'; kill -KILL -- "-${game_pid}" 2>/dev/null || true; wait_for_game_group 1 || true; fi
     fi
-
     wait "${game_pid}" 2>/dev/null || true
 }
 
 cleanup_runtime() {
-    [[ -z "${monitor_pid}" ]] || kill "${monitor_pid}" 2>/dev/null || true
-    [[ -z "${monitor_pid}" ]] || wait "${monitor_pid}" 2>/dev/null || true
-    [[ -z "${xvfb_pid}" ]] || kill "${xvfb_pid}" 2>/dev/null || true
-    [[ -z "${xvfb_pid}" ]] || wait "${xvfb_pid}" 2>/dev/null || true
+    [[ -z "${monitor_pid}" ]] || kill "${monitor_pid}" 2>/dev/null || true; [[ -z "${monitor_pid}" ]] || wait "${monitor_pid}" 2>/dev/null || true
+    [[ -z "${xvfb_pid}" ]] || kill "${xvfb_pid}" 2>/dev/null || true; [[ -z "${xvfb_pid}" ]] || wait "${xvfb_pid}" 2>/dev/null || true
 }
 
 main() {
-    local public_ip
-    local owner_name
-    local current_owner_name
-    local current_owner_guid
-    local server_name
-    local server_password
-    local active_save
-    local game_status
-    local windows_game_log
-    local -a game_args
-
-    if [[ ! -x "${PROTON_BIN}" ]]; then
-        fail "Proton runtime is missing."
-        exit 66
-    fi
-
+    local public_ip owner_name current_owner_name current_owner_guid server_name server_password active_save startup_command game_status windows_game_log
+    if [[ ! -x "${PROTON_BIN}" ]]; then fail 'Proton runtime is missing.'; exit 66; fi
     owner_name="$(trim "${OWNER_NAME:-}")"
     if [[ -z "${owner_name}" ]]; then
-        setup_required \
-            '[SETUP REQUIRED] A Steam account name is required to claim Astroneer administration.' \
-            'Enter it under Startup > Server Owner Name and start the server again.' \
-            'The first player joining with that exact Steam name will become the owner.' \
-            'Guide: https://cybrancee.com/learn/knowledge-base/how-to-host-an-astroneer-server/'
+        setup_required '[SETUP REQUIRED] A Steam account name is required to claim Astroneer administration.' 'Enter it under Startup > Server Owner Name and start the server again.' 'The first player joining with that exact Steam name will become the owner.' 'Guide: https://cybrancee.com/learn/knowledge-base/how-to-host-an-astroneer-server/'
     fi
-
-    public_ip="$(trim "${PUBLIC_IP:-}")"
-    if [[ -z "${public_ip}" ]]; then
-        public_ip="$(trim "${SERVER_IP:-}")"
-    fi
-    if ! valid_ipv4 "${public_ip}"; then
-        setup_required \
-            '[SETUP REQUIRED] Cybrancee could not resolve this server public IPv4 address.' \
-            'Startup has been paused to prevent Astroneer from registering an unreachable endpoint.' \
-            'Please contact Cybrancee support and ask them to configure PUBLIC_IP for this server.'
-    fi
-
-    server_name="$(trim "${SERVER_NAME:-Cybrancee Astroneer Server}")"
-    server_password="${SERVER_PASSWORD:-}"
-    active_save="$(trim "${ACTIVE_SAVE:-SAVE_1}")"
-    require_single_line 'Server Name' "${server_name}"
-    require_single_line 'Server Password' "${server_password}"
-    require_single_line 'Server Owner Name' "${owner_name}"
-    require_single_line 'Active Save Name' "${active_save}"
-    [[ -n "${server_name}" ]] || { fail 'Server Name cannot be empty.'; exit 64; }
-    [[ -n "${active_save}" ]] || { fail 'Active Save Name cannot be empty.'; exit 64; }
-
+    public_ip="$(trim "${PUBLIC_IP:-}")"; if [[ -z "${public_ip}" ]]; then public_ip="$(trim "${SERVER_IP:-}")"; fi
+    if ! valid_ipv4 "${public_ip}"; then setup_required '[SETUP REQUIRED] Cybrancee could not resolve this server public IPv4 address.' 'Startup has been paused to prevent Astroneer from registering an unreachable endpoint.' 'Please contact Cybrancee support and ask them to configure PUBLIC_IP for this server.'; fi
+    server_name="$(trim "${SERVER_NAME:-Cybrancee Astroneer Server}")"; server_password="${SERVER_PASSWORD:-}"; active_save="$(trim "${ACTIVE_SAVE:-SAVE_1}")"
+    require_single_line 'Server Name' "${server_name}"; require_single_line 'Server Password' "${server_password}"; require_single_line 'Server Owner Name' "${owner_name}"; require_single_line 'Active Save Name' "${active_save}"
+    [[ -n "${server_name}" ]] || { fail 'Server Name cannot be empty.'; exit 64; }; [[ -n "${active_save}" ]] || { fail 'Active Save Name cannot be empty.'; exit 64; }
     require_integer_range 'Game Port' "${SERVER_PORT:-}" 1024 65535
-    if [[ "${DEBUG_MODE:-0}" != '0' && "${DEBUG_MODE:-0}" != '1' ]]; then
-        fail 'Extended Debug Logging must be 0 or 1.'
-        exit 64
-    fi
+    if [[ "${DEBUG_MODE:-0}" != '0' && "${DEBUG_MODE:-0}" != '1' ]]; then fail 'Extended Debug Logging must be 0 or 1.'; exit 64; fi
     debug_enabled="${DEBUG_MODE:-0}"
-    if [[ ! -f "${GAME_EXE}" ]]; then
-        fail "Astroneer files are missing. Reinstall the server files and try again."
-        exit 66
-    fi
+    update_server
+    if [[ ! -f "${GAME_EXE}" ]]; then fail 'Astroneer files are missing. Reinstall the server files and try again.'; exit 66; fi
     mkdir -p "${CONFIG_DIR}" "${LOG_DIR}" "${SERVER_DIR}/Astro/Saved/SaveGames" "${SERVER_DIR}/.astroneer-proton"
-
-    ini_set "${ENGINE_INI}" 'URL' 'Port' "${SERVER_PORT}"
-    ini_set "${ENGINE_INI}" 'SystemSettings' 'net.AllowEncryption' 'True'
-
-    ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'PublicIP' "${public_ip}"
-    ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'ServerName' "${server_name}"
-    ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'ServerPassword' "${server_password}"
-    ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'ActiveSaveFileDescriptiveName' "${active_save}"
-    current_owner_name="$(ini_get "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'OwnerName' 2>/dev/null || true)"
-    current_owner_guid="$(ini_get "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'OwnerGuid' 2>/dev/null || true)"
+    ini_set "${ENGINE_INI}" 'URL' 'Port' "${SERVER_PORT}"; ini_set "${ENGINE_INI}" 'SystemSettings' 'net.AllowEncryption' 'True'
+    ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'PublicIP' "${public_ip}"; ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'ServerName' "${server_name}"; ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'ServerPassword' "${server_password}"; ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'ActiveSaveFileDescriptiveName' "${active_save}"
+    current_owner_name="$(ini_get "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'OwnerName' 2>/dev/null || true)"; current_owner_guid="$(ini_get "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'OwnerGuid' 2>/dev/null || true)"
     if [[ "${current_owner_name}" != "${owner_name}" ]]; then
-        ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'OwnerName' "${owner_name}"
-        ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'OwnerGuid' '0'
-        if [[ -n "${current_owner_name}" && "${current_owner_guid}" != '0' ]]; then
-            brand "Owner name changed; ownership will transfer when the matching Steam player joins."
-        fi
-    elif [[ -z "${current_owner_guid}" ]]; then
-        ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'OwnerGuid' '0'
-    fi
-
-    brand "${SEPARATOR}"
-    brand "Starting Astroneer Dedicated Server."
-    brand "Startup can take a few minutes."
-    if ((debug_enabled == 1)); then
-        : > "${RUNTIME_LOG_PATH}"
-        brand "Extended diagnostic logging is enabled."
-    fi
-    brand "${SEPARATOR}"
-
-    rm -f /tmp/.X99-lock /tmp/.X11-unix/X99
-    Xvfb :99 -nolisten tcp -screen 0 1024x768x16 >/tmp/cybrancee-xvfb.log 2>&1 &
-    xvfb_pid=$!
-    export DISPLAY=':99'
-    export PROTON_LOG="${debug_enabled}"
-    export PROTONFIXES_DISABLE='1'
-    export PROTON_USE_XALIA='0'
-    export PROTON_USE_WINED3D='1'
-    export STEAM_COMPAT_APP_ID="${APP_ID}"
-    export STEAM_COMPAT_DATA_PATH="${SERVER_DIR}/.astroneer-proton"
-    export STEAM_COMPAT_CLIENT_INSTALL_PATH="${SERVER_DIR}"
-    export SteamAppId="${APP_ID}"
-    export SteamGameId="${APP_ID}"
-    export WINEDEBUG='-all'
-
+        ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'OwnerName' "${owner_name}"; ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'OwnerGuid' '0'
+        if [[ -n "${current_owner_name}" && "${current_owner_guid}" != '0' ]]; then brand 'Owner name changed; ownership will transfer when the matching Steam player joins.'; fi
+    elif [[ -z "${current_owner_guid}" ]]; then ini_set "${SETTINGS_INI}" '/Script/Astro.AstroServerSettings' 'OwnerGuid' '0'; fi
+    rm -f /tmp/.X99-lock /tmp/.X11-unix/X99; Xvfb :99 -nolisten tcp -screen 0 1024x768x16 >/tmp/cybrancee-xvfb.log 2>&1 & xvfb_pid=$!
+    export DISPLAY=':99' PROTON_LOG="${debug_enabled}" PROTONFIXES_DISABLE='1' PROTON_USE_XALIA='0' PROTON_USE_WINED3D='1' STEAM_COMPAT_APP_ID="${APP_ID}" STEAM_COMPAT_DATA_PATH="${SERVER_DIR}/.astroneer-proton" STEAM_COMPAT_CLIENT_INSTALL_PATH="${SERVER_DIR}" SteamAppId="${APP_ID}" SteamGameId="${APP_ID}" WINEDEBUG='-all'
+    windows_game_log="Z:${GAME_LOG_PATH//\//\\}"; export PROTON_BIN; export ASTRONEER_GAME_EXE="${GAME_EXE}"; export ASTRONEER_WINDOWS_LOG="${windows_game_log}"
+    if ((debug_enabled == 1)); then export ASTRONEER_EXTRA_ARGS='-stdout -FullStdOutLogOutput'; : > "${RUNTIME_LOG_PATH}"; else export ASTRONEER_EXTRA_ARGS=''; fi
     sleep 1
-    if ! kill -0 "${xvfb_pid}" 2>/dev/null; then
-        fail "The virtual display failed to start."
-        sed 's/^/[Xvfb] /' /tmp/cybrancee-xvfb.log >&2 || true
-        exit 70
-    fi
-
-    trap 'request_shutdown INT' INT
-    trap 'request_shutdown TERM' TERM
-    cd "${SERVER_DIR}"
-    windows_game_log="Z:${GAME_LOG_PATH//\//\\}"
-    game_args=(-log -unattended "-ABSLOG=${windows_game_log}" -forcelogflush)
-    if ((debug_enabled == 1)); then
-        game_args+=(-stdout -FullStdOutLogOutput)
-    fi
-    setsid "${PROTON_BIN}" waitforexitandrun "${GAME_EXE}" "${game_args[@]}" \
-        > >(filter_runtime_output) \
-        2> >(filter_runtime_output >&2) &
-    game_pid=$!
-    monitor_readiness &
-    monitor_pid=$!
-
-    set +e
-    wait "${game_pid}"
-    game_status=$?
-
-    if ((shutdown_requested == 1)); then
-        finish_requested_shutdown
-        game_status=0
-    fi
-    set -e
-
-    cleanup_runtime
-    trap - INT TERM
-
-    if ((shutdown_requested == 1)); then
-        brand "Astroneer stopped cleanly."
-    elif ((game_status != 0)); then
-        fail "Astroneer exited with status ${game_status}."
-    else
-        brand "Astroneer stopped cleanly."
-    fi
+    if ! kill -0 "${xvfb_pid}" 2>/dev/null; then fail 'The virtual display failed to start.'; sed 's/^/[Xvfb] /' /tmp/cybrancee-xvfb.log >&2 || true; exit 70; fi
+    startup_command="$(resolve_startup)"
+    brand "${SEPARATOR}"; brand 'Starting Astroneer Dedicated Server.'; brand 'Startup can take a few minutes.'; if ((debug_enabled == 1)); then brand 'Extended diagnostic logging is enabled.'; fi; brand "${SEPARATOR}"; brand "Startup command: ${startup_command}"
+    trap 'request_shutdown INT' INT; trap 'request_shutdown TERM' TERM; cd "${SERVER_DIR}"
+    setsid /bin/bash -lc "${startup_command}" > >(filter_runtime_output) 2> >(filter_runtime_output >&2) & game_pid=$!
+    monitor_readiness & monitor_pid=$!
+    set +e; wait "${game_pid}"; game_status=$?
+    if ((shutdown_requested == 1)); then finish_requested_shutdown; game_status=0; fi
+    set -e; cleanup_runtime; trap - INT TERM
+    if ((shutdown_requested == 1)); then brand 'Astroneer stopped cleanly.'; elif ((game_status != 0)); then fail "Astroneer exited with status ${game_status}."; else brand 'Astroneer stopped cleanly.'; fi
     exit "${game_status}"
 }
 
-if [[ "${ASTRONEER_HANDLER_TESTING:-0}" != '1' ]]; then
-    main "$@"
-fi
+if [[ "${ASTRONEER_HANDLER_TESTING:-0}" != '1' ]]; then main "$@"; fi
