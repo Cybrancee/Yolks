@@ -6,6 +6,14 @@ LABEL       author="Michael Parker" maintainer="support@cybrancee.com"
 LABEL       org.opencontainers.image.source="https://github.com/Cybrancee/Yolks"
 LABEL       org.opencontainers.image.licenses=MIT
 
+# Point apt sources to the archive mirror for an end-of-life Debian release
+RUN sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
+    sed -i 's/security.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
+    sed -i '/debian-security/d' /etc/apt/sources.list && \
+    apt-get update -o Acquire::Check-Valid-Until=false && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN         apt update \
             && apt -y upgrade \
             && apt -y install wget ffmpeg iproute2 git sqlite3 libsqlite3-dev python3 python3-dev ca-certificates dnsutils tzdata zip tar curl build-essential libtool iputils-ping libnss3 tini libdbus-1-3 pkg-config libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev libsodium23 libsodium-dev\

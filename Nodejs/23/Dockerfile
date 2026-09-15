@@ -18,7 +18,7 @@ RUN         npm cache clear --force
 
 RUN         npm install typescript ts-node @types/node --force --verbose --location=global
 
-RUN npm install -g npm@latest
+RUN npm install -g "npm@^10"
 
 # install pnpm
 RUN         npm install -g corepack@latest

@@ -12,7 +12,9 @@ RUN         apt update \
             && apt -y install wget ffmpeg iproute2 git sqlite3 libsqlite3-dev python3 python3-dev ca-certificates dnsutils tzdata zip tar curl build-essential libtool iputils-ping libnss3 tini libdbus-1-3 pkg-config libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev libsodium23 libsodium-dev\
             && useradd -m -d /home/container container
 
-RUN         npm install npm@latest typescript ts-node @types/node --location=global
+RUN         npm install typescript ts-node @types/node --force --verbose --location=global
+
+RUN npm install -g "npm@^10"
 
 # install pnpm
 RUN         npm install -g corepack@latest
