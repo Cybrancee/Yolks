@@ -1,4 +1,4 @@
-FROM        debian:bookworm-slim
+FROM        debian:trixie
 
 LABEL       author="Torsten Widmann" maintainer="support@cybrancee.com"
 
@@ -12,16 +12,17 @@ RUN         apt install -y --no-install-recommends \
                 wget \
                 iproute2 \
                 gnupg2 \
-                software-properties-common \
+                #software-properties-common \
                 libntlm0 \
                 winbind \
                 xvfb \
                 xauth \
-                libncurses5-dev:i386 \
+                #libncurses5-dev:i386 \
+                libncurses-dev:i386\
                 libncurses6 \
-                dbus \
-                libgdiplus \
-                lib32gcc-s1
+                dbus 
+                #libgdiplus \
+                #lib32gcc-s1
 RUN         apt install -y \
                 alsa-tools \
                 libpulse0 \
@@ -47,9 +48,9 @@ RUN         apt install -y \
 #&& rm GE-Proton8-32.tar.gz
 
 # Download Proton GE
-RUN curl -sLOJ "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton8-32/GE-Proton8-32.tar.gz" \
-    && tar -xzf GE-Proton8-32.tar.gz -C /usr/local/bin/ --strip-components=1 \
-    && rm GE-Proton8-32.tar.gz
+RUN curl -sLOJ "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton11-3/GE-Proton11-3.tar.gz" \
+    && tar -xzf GE-Proton11-3.tar.gz -C /usr/local/bin/ --strip-components=1 \
+    && rm GE-Proton11-3.tar.gz
 
 # Proton Fix machine-id
 RUN         rm -f /etc/machine-id
