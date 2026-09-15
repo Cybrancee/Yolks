@@ -1,4 +1,4 @@
-FROM        --platform=$TARGETOS/$TARGETARCH node:22-bullseye-slim
+FROM        --platform=$TARGETOS/$TARGETARCH node:22-bookworm-slim
 
 ARG CHROME_VERSION="143.0.7499.40"
 
