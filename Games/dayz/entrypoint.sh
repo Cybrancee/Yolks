@@ -147,9 +147,15 @@ function ModsLowercase {
 }
 
 # Removes duplicate items from a semicolon delimited string
-function RemoveDuplicates { #[Input: str - Output: printf of new str]
-    if [[ -n $1 ]]; then # If nothing to compare, skip to prevent extra semicolon being returned
-        echo $1 | sed -e 's/;/\n/g' | sort -u | xargs printf '%s;'
+# function RemoveDuplicates { #[Input: str - Output: printf of new str]
+#     if [[ -n $1 ]]; then # If nothing to compare, skip to prevent extra semicolon being returned
+#         echo $1 | sed -e 's/;/\n/g' | sort -u | xargs printf '%s;'
+#     fi
+# }
+
+function RemoveDuplicates {
+    if [[ -n "$1" ]]; then
+        printf "%s" "$1" | awk -v RS=';' '!seen[$0]++ {printf "%s;", $0}'
     fi
 }
 
@@ -189,9 +195,10 @@ else
     allMods=${SERVERMODS}
 fi
 allMods+=$CLIENT_MODS # Add all client-side mods to the master mod list
-CLIENT_MODS=$(RemoveDuplicates ${CLIENT_MODS}) # Remove duplicate mods from CLIENT_MODS, if present
+CLIENT_MODS=$(RemoveDuplicates "${CLIENT_MODS}") # Remove duplicate mods from CLIENT_MODS, if present
 allMods=$(RemoveDuplicates ${allMods}) # Remove duplicate mods from allMods, if present
-allMods=$(echo $allMods | sed -e 's/;/ /g') # Convert from string to array
+#allMods=$(echo $allMods | sed -e 's/;/ /g') # Convert from string to array
+allMods=$(echo "$allMods" | sed -e 's/;/ /g')
 
 # Update everything (server and mods), if specified
 if [[ ${UPDATE_SERVER} == 1 ]]; then
@@ -285,6 +292,8 @@ unset STEAM_USER STEAM_PASS
 
 # Replace Startup Variables
 modifiedStartup=`eval echo $(echo ${STARTUP} | sed -e 's/{{/${/g' -e 's/}}/}/g')`
+
+#modifiedStartup=$(eval "echo \"${STARTUP}\" | sed -e 's/{{/${/g' -e 's/}}/}/g'")
 
 # Start the Server
 echo -e "\n${GREEN}[STARTUP]:${NC} Starting server with the following startup command:"
