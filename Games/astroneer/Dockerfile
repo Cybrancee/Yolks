@@ -35,6 +35,8 @@ RUN set -eux; \
     chmod 1777 /tmp/.X11-unix
 
 COPY --chmod=0755 astroneer /usr/local/bin/astroneer
+RUN sed -i 's/\r$//' /usr/local/bin/astroneer \
+    && bash -n /usr/local/bin/astroneer
 
 ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8 \
