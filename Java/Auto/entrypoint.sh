@@ -13,6 +13,14 @@ VARIABLE_TXT="/home/container/variables.txt"
 
 INSTALLER_LOG="/home/container/neoforge-installer.jar.log"
 
+PROPERTIES_FILE="server.properties"
+
+FALLBACK_MOTD="A Minecraft Server"
+
+LIST_URL="https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en"
+
+LOCAL_LIST="/tmp/badwords.txt"
+
 
 if [ -d "/home/container/libraries/net/neoforged/neoforge" ]; then
         MINECRAFT_VERSION=$(ls "/home/container/libraries/net/neoforged/neoforge" | head -n 1)
@@ -120,6 +128,29 @@ echo "Java Home: $JAVA_HOME"
 
 # Print Java Version
 eval "${JAVA_HOME}/bin/java -version"
+
+# filter MOTD
+if [ -f "$PROPERTIES_FILE" ]; then
+    CURRENT_MOTD=$(grep -E "^motd=" "$PROPERTIES_FILE" | cut -d'=' -f2-)
+
+    # Remove common spacing or special characters before checking
+    CLEANED_MOTD=$(echo "$CURRENT_MOTD" | tr -d '[]._#*-')
+
+    # Simple character normalization (e.g., replace '3' with 'e')
+    NORMALISED_MOTD=$(echo "$CLEANED_MOTD" | tr '301!$@' 'eoilsa')
+
+    echo "Current MOTD: $CURRENT_MOTD"
+    echo "Cleaned MOTD: $CLEANED_MOTD"
+    echo "Normalised MOTD: $NORMALISED_MOTD"
+    
+    # Download the blocklist if it does not exist locally
+    curl -sSL "$LIST_URL" -o "$LOCAL_LIST"
+
+    if echo "$CURRENT_MOTD $NORMALISED_MOTD" | grep -iqw -f "$LOCAL_LIST"; then
+        echo "Inappropriate or flagged MOTD detected! Resetting to default..."
+        sed -i "s/^motd=.*/motd=$FALLBACK_MOTD/" "$PROPERTIES_FILE"
+    fi
+fi
 
 # Replace Startup Variables
 MODIFIED_STARTUP=$(echo -e ${STARTUP} | sed -e 's/{{/${/g' -e 's/}}/}/g' -e "s|^java |${JAVA_HOME}/bin/java |g" -e "s| java | ${JAVA_HOME}/bin/java |g")
